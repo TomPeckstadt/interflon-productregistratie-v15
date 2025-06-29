@@ -1549,17 +1549,7 @@ export default function ProductRegistrationApp() {
                   {isLoading ? "Bezig met inloggen..." : "🔐 Inloggen"}
                 </Button>
 
-                <div className="pt-4 border-t">
-                  <div className="text-xs text-gray-600 space-y-1">
-                    <p>💡 Demo login:</p>
-                    <p>
-                      Email: <code className="bg-gray-100 px-1 rounded">admin@example.com</code>
-                    </p>
-                    <p>
-                      Wachtwoord: <code className="bg-gray-100 px-1 rounded">InterfLon2024!Demo</code>
-                    </p>
-                  </div>
-                </div>
+               
 
                 <div className="pt-2 border-t">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
