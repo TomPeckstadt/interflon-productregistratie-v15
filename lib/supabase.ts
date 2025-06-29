@@ -880,18 +880,17 @@ export const createAuthUser = async (email: string, password: string, name: stri
   }
 
   try {
-    console.log("🔐 Creating auth user in Supabase:", { email, name, role })
+    console.log("🔐 Creating auth user with Admin API:", { email, name, role })
 
-    // Create user in Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // Use Admin API to create user without affecting current session
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
-      options: {
-        data: {
-          name: name,
-          role: role,
-        },
+      user_metadata: {
+        name,
+        role,
       },
+      email_confirm: true, // Skip email confirmation
     })
 
     if (authError) {
@@ -899,18 +898,22 @@ export const createAuthUser = async (email: string, password: string, name: stri
       return { data: null, error: authError }
     }
 
-    console.log("✅ Auth user created successfully:", authData)
+    console.log("✅ Auth user created successfully:", authData.user.email)
 
-    // Also add to users table for app functionality
-    const userResult = await saveUser(name, role)
-    if (userResult.error) {
-      console.warn("⚠️ Auth user created but failed to add to users table:", userResult.error)
+    // Also create the app user record
+    const appUserResult = await saveUser(name, role)
+    if (appUserResult.error) {
+      console.warn("⚠️ Auth user created but app user failed:", appUserResult.error)
     }
 
     return {
       data: {
-        user: authData.user,
-        appUser: userResult.data,
+        user: {
+          id: authData.user.id,
+          email: authData.user.email,
+          name,
+          role,
+        },
       },
       error: null,
     }
