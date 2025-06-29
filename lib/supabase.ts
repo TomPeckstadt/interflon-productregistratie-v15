@@ -872,7 +872,7 @@ export const deleteCategory = async (id: string) => {
   }
 }
 
-// NEW: Supabase Auth Integration Functions
+// NEW: Supabase Auth Integration Functions with Session Management
 export const createAuthUser = async (email: string, password: string, name: string, role = "user") => {
   if (!supabase) {
     console.log("🔐 No Supabase - mock create auth user:", { email, name, role })
@@ -880,27 +880,42 @@ export const createAuthUser = async (email: string, password: string, name: stri
   }
 
   try {
-    console.log("🔐 Creating auth user with Admin API:", { email, name, role })
+    console.log("🔐 Creating auth user with session management:", { email, name, role })
 
-    // Use Admin API to create user without affecting current session
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    // Step 1: Save current session
+    const { data: currentSession } = await supabase.auth.getSession()
+    console.log("💾 Current session saved")
+
+    // Step 2: Create new user (this will log them in automatically)
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
-      user_metadata: {
-        name,
-        role,
+      options: {
+        data: {
+          name,
+          role,
+        },
       },
-      email_confirm: true, // Skip email confirmation
     })
 
-    if (authError) {
-      console.error("❌ Error creating auth user:", authError)
-      return { data: null, error: authError }
+    if (signUpError) {
+      console.error("❌ Error creating auth user:", signUpError)
+      return { data: null, error: signUpError }
     }
 
-    console.log("✅ Auth user created successfully:", authData.user.email)
+    console.log("✅ New user created:", signUpData.user?.email)
 
-    // Also create the app user record
+    // Step 3: Immediately restore the original session
+    if (currentSession.session) {
+      console.log("🔄 Restoring original session...")
+      await supabase.auth.setSession({
+        access_token: currentSession.session.access_token,
+        refresh_token: currentSession.session.refresh_token,
+      })
+      console.log("✅ Original session restored")
+    }
+
+    // Step 4: Create app user record
     const appUserResult = await saveUser(name, role)
     if (appUserResult.error) {
       console.warn("⚠️ Auth user created but app user failed:", appUserResult.error)
@@ -909,8 +924,8 @@ export const createAuthUser = async (email: string, password: string, name: stri
     return {
       data: {
         user: {
-          id: authData.user.id,
-          email: authData.user.email,
+          id: signUpData.user?.id,
+          email: signUpData.user?.email,
           name,
           role,
         },
